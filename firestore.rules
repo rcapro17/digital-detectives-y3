@@ -1,0 +1,31 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function teacher() {
+      return request.auth != null
+        && request.auth.token.email == 'REPLACE_WITH_TEACHER_EMAIL'
+        && request.auth.token.email_verified == true;
+    }
+    match /submissions/{studentUid} {
+      allow read: if teacher();
+      allow create: if request.auth != null
+        && request.auth.uid == studentUid
+        && request.auth.token.firebase.sign_in_provider == 'anonymous'
+        && request.resource.data.keys().hasOnly(['team','className','score','missions','completed','reportFacts','reportSource','answers','submittedAtLocal','updatedAt','submittedAt','studentUid'])
+        && request.resource.data.studentUid == studentUid
+        && request.resource.data.team is string && request.resource.data.team.size() <= 36
+        && request.resource.data.reportFacts is string && request.resource.data.reportFacts.size() <= 2000
+        && request.resource.data.reportSource is string && request.resource.data.reportSource.size() <= 500;
+      allow update: if teacher() || (
+        request.auth != null && request.auth.uid == studentUid
+        && request.auth.token.firebase.sign_in_provider == 'anonymous'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['team','className','score','missions','completed','reportFacts','reportSource','answers','submittedAtLocal','updatedAt','submittedAt','studentUid'])
+        && request.resource.data.studentUid == studentUid
+        && request.resource.data.team is string && request.resource.data.team.size() <= 36
+        && request.resource.data.reportFacts is string && request.resource.data.reportFacts.size() <= 2000
+        && request.resource.data.reportSource is string && request.resource.data.reportSource.size() <= 500
+      );
+      allow delete: if teacher();
+    }
+  }
+}
